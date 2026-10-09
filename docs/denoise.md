@@ -88,6 +88,12 @@ from a check tile; this estimate can choose imperfectly on unmeasured hardware.
 Settings offers Automatic, Graphics card and Processor. GPU tests cover supported
 synthetic networks against the scalar executor; a real-model test compares CPU/GPU.
 
+The convolution's shared input tile uses scalar slots with one writer per slot.
+Writing different lanes of a shared vector raced on Metal because vector lane stores
+could overwrite a neighbouring lane. The existing odd-size and concurrent-tile tests
+reproduced the failure on Apple M4; after the fix all seven synthetic networks match
+the scalar reference within 1.1e-6 relative error (2026-10-09, Metal).
+
 ### Historical performance, measured 2026-10-07
 
 These are the contributor's measurements **before the current upstream integration**,
