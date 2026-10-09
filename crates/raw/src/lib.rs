@@ -312,6 +312,19 @@ pub fn probe_info(bytes: &[u8]) -> Result<RawInfo> {
     decode_with(bytes, Mode::Header).map(RawImage::into_info)
 }
 
+/// Describe a CR3's reduced Bayer preview without decoding its samples. This is separate from
+/// [`probe_info`]: a reduced preview must never replace the primary sensor image for development.
+pub fn probe_sensor_preview(bytes: &[u8]) -> Result<RawInfo> {
+    vendor::cr3::decode_preview(bytes, Mode::Header).map(RawImage::into_info)
+}
+
+/// Decode a CR3's reduced Bayer preview when no usable embedded JPEG is available. It retains
+/// the camera's levels, white balance, preview crop and orientation; colour calibration has the
+/// same limits as primary CR3 development. Unsupported or damaged previews return an error.
+pub fn decode_sensor_preview(bytes: &[u8]) -> Result<RawImage> {
+    vendor::cr3::decode_preview(bytes, Mode::Full)
+}
+
 /// How much of a file a decoder reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Mode {

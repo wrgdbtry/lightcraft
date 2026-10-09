@@ -819,7 +819,7 @@ pub fn develop(src: &Arc<Rgb32f>, info: &SourceInfo, s: &DevelopSettings, req: &
 pub enum QuickSource {
     /// The photo's own develop render for its current settings (cached view or thumbnail render).
     Cached,
-    /// The camera's embedded JPEG (unedited raws).
+    /// A camera JPEG or developed CR3 reduced sensor preview (unedited raws).
     Embedded,
     /// A thumbnail-level develop render made for the occasion.
     Small,

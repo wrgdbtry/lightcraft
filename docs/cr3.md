@@ -19,8 +19,16 @@ embedded-JPEG fallback and its visible warning when a JPEG is present. So does
 any other CR3 decode error (a corrupt file, or a body whose CRX stream the
 decoder misreads): every CR3 opened from its embedded JPEG before this decoder,
 and only three bodies are verified, so a CR3 never fails to import or load
-where a preview exists. HEVC-only preview tracks are recognized but are not
-decoded.
+where a usable preview exists. If a JPEG preview is missing, non-JPEG (for example
+HEVC), or cannot be decoded, the engine develops the file's reduced Bayer RAW
+track as a fallback. Its levels, white balance, crop and orientation are retained;
+full-sensor maker-note borders are not applied to the smaller mosaic. Import,
+quick previews and rendering share this fallback. Unsupported primary RAW
+variants still import with the existing preview-only warning and the reduced
+preview's dimensions. HEVC itself remains unsupported. When the primary RAW
+also cannot be decoded, files with neither a usable JPEG nor a decodable reduced
+Bayer track report an error. A sensor preview is never used as a camera-JPEG
+colour-fitting reference.
 
 ## Verified sensor decoding
 

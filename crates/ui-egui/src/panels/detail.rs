@@ -954,7 +954,7 @@ fn filter_pill(app: &mut LightcraftApp, ui: &mut egui::Ui, canvas: Rect) {
 fn preview_only_pill(ui: &mut egui::Ui, canvas: Rect, reason: &str) {
     let t = Tokens::get(ui.ctx());
     let p = ui.painter_at(canvas);
-    let text = crate::i18n::tr_format!("Preview only — editing the camera's embedded JPEG ({})", crate::widgets::preview_only_variant(reason));
+    let text = crate::i18n::tr_format!("Preview only — editing the embedded preview ({})", crate::widgets::preview_only_variant(reason));
     let g = p.layout_no_wrap(text, t.font(12.0), Color32::WHITE);
     let size = vec2(g.size().x + 40.0, 26.0);
     let r = Rect::from_min_size(pos2(canvas.center().x - size.x / 2.0, canvas.top() + 12.0), size);

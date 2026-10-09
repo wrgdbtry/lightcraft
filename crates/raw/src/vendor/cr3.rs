@@ -20,7 +20,7 @@
 
 use super::{black_from_columns, crx, white_from_data};
 use crate::{BlackLevel, Cfa, ColorData, MAX_SAMPLES, Mode, OpcodeLists, RawData, RawError, RawFormat, RawImage, Rect, Result};
-use lightcraft_meta::cr3::{Cr3ImageArea, Cr3Track, Cr3TrackKind, parse_cr3};
+use lightcraft_meta::cr3::{Cr3, Cr3ImageArea, Cr3Track, Cr3TrackKind, parse_cr3};
 use lightcraft_tiff::{Ifd, Tiff};
 
 const SENSOR_INFO: u16 = 0x00e0;
@@ -175,6 +175,33 @@ fn black_at_active(levels: [f32; 4], pattern: u8, active: Rect) -> BlackLevel {
 pub(crate) fn decode(bytes: &[u8], mode: Mode) -> Result<RawImage> {
     let container = parse_cr3(bytes).ok_or(RawError::NotRaw)?;
     let track = main_track(&container.tracks).ok_or_else(|| RawError::Unsupported("CR3 without a Bayer raw track".into()))?;
+    decode_track(bytes, &container, track, mode, false)
+}
+
+/// The reduced Bayer track can supply a preview when the camera stored HEVC instead of JPEG.
+/// Equal-sized tracks may be Dual Pixel deltas, so they are never used as previews.
+pub(crate) fn decode_preview(bytes: &[u8], mode: Mode) -> Result<RawImage> {
+    let container = parse_cr3(bytes).ok_or(RawError::NotRaw)?;
+    let main = main_track(&container.tracks).ok_or_else(|| RawError::Unsupported("CR3 without a Bayer raw track".into()))?;
+    let Cr3TrackKind::Raw { width: main_width, height: main_height, .. } = main.kind else {
+        return Err(RawError::Unsupported("CR3 without a Bayer raw track".into()));
+    };
+    let main_area = u64::from(main_width) * u64::from(main_height);
+    let (mut best, mut best_area) = (None, 0);
+    for track in &container.tracks {
+        if let Cr3TrackKind::Raw { width, height, .. } = track.kind {
+            let area = u64::from(width) * u64::from(height);
+            if width <= main_width && height <= main_height && area < main_area && area > best_area {
+                best = Some(track);
+                best_area = area;
+            }
+        }
+    }
+    let track = best.ok_or_else(|| RawError::Unsupported("CR3 without a reduced Bayer raw preview".into()))?;
+    decode_track(bytes, &container, track, mode, true)
+}
+
+fn decode_track(bytes: &[u8], container: &Cr3<'_>, track: &Cr3Track, mode: Mode, reduced: bool) -> Result<RawImage> {
     let coding = track.compression(bytes).ok_or_else(|| RawError::Corrupt("CR3 raw track has an invalid CMP1 descriptor".into()))?;
     if coding.planes != 4 || coding.encoding != 0 {
         return Err(RawError::Unsupported(format!("Canon CR3 encoding {} with {} planes", coding.encoding, coding.planes)));
@@ -211,7 +238,9 @@ pub(crate) fn decode(bytes: &[u8], mode: Mode) -> Result<RawImage> {
         .find(|t| t.ifds.first().is_some_and(|m| m.contains(COLOR_DATA)));
     let color_maker = timed_maker.as_ref().and_then(|t| t.ifds.first()).or(maker);
     let area = track.image_area(bytes);
-    let (active, crop) = geometry(area.as_ref(), maker, width, height);
+    // SensorInfo and AspectInfo describe the full sensor, not the reduced mosaic. Its own
+    // IAD1 still supplies the preview crop; camera levels and white balance apply to both.
+    let (active, crop) = geometry(area.as_ref(), if reduced { None } else { maker }, width, height);
     let levels = camera_levels(color_maker, coding.bit_depth);
     let black = match levels.black {
         Some(levels) => black_at_active(levels, coding.cfa_pattern, active),

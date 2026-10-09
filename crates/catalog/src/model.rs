@@ -273,8 +273,8 @@ pub struct Photo {
     pub analysis: Option<Analysis>,
     /// A raw file whose sensor data can't be decoded yet (an unsupported raw variant): why (the
     /// raw decoder's reason, e.g. "Nikon Huffman-compressed NEF …"). The photo is shown and
-    /// edited from the camera's embedded JPEG preview — a rendered image with the camera's
-    /// picture style baked in — so it is treated as a rendered (non-raw) source.
+    /// edited from an embedded preview (usually the camera JPEG, or a CR3 reduced Bayer track).
+    /// Full-sensor editing is unavailable; the preview loader supplies its colour interpretation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preview_only: Option<String>,
     /// A Local record: the fingerprint of its state when the browse catalogued it, to tell
